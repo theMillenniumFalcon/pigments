@@ -1,0 +1,1 @@
+Pigmnts is a color palette creator from an image built using Rust.
