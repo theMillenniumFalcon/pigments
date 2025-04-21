@@ -1,0 +1,25 @@
+[package]
+name = "pigments"
+version = "0.1.0"
+edition = "2024"
+authors = ["Your Name <your.email@example.com>"]
+description = "A color palette creator from images"
+license = "MIT"
+
+[dependencies]
+image = "0.24"
+linfa = "0.7.0"
+linfa-clustering = "0.7.0"
+ndarray = "0.15"
+clap = { version = "4.4", features = ["derive"] }
+anyhow = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+assert_fs = "1.1"
+predicates = "3.1"
+test-log = "0.2"
