@@ -23,8 +23,8 @@ fn test_extract_colors_from_image() {
     }
     img.save(&input_path).unwrap();
 
-    // Run the application
-    let status = Command::new("cargo")
+    // Run the application with a timeout
+    let output = Command::new("cargo")
         .arg("run")
         .arg("--")
         .arg("-i")
@@ -35,10 +35,15 @@ fn test_extract_colors_from_image() {
         .arg("json")
         .arg("-o")
         .arg(output_path.path())
-        .status()
-        .unwrap();
+        .env("RUST_LOG", "info")
+        .output()
+        .expect("Failed to execute command");
 
-    assert!(status.success());
+    // Print output for debugging
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+
+    assert!(output.status.success(), "Command failed: {}", String::from_utf8_lossy(&output.stderr));
 
     // Verify the output file exists and contains valid JSON
     output_path.assert(predicate::path::exists());

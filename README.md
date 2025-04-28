@@ -9,6 +9,7 @@ A color palette creator that extracts dominant colors from images using k-means 
 - Output in text or JSON format
 - Save results to a file
 - Production-ready with proper error handling and logging
+- Automatic image downsampling for better performance
 
 ## Installation
 
@@ -56,8 +57,15 @@ cargo test
 
 To run with logging:
 ```bash
-RUST_LOG=info pigments -i image.jpg
+RUST_LOG=info cargo run -- -i image.jpg
 ```
+
+### Troubleshooting
+
+If the program seems to hang:
+1. Enable logging with `RUST_LOG=info`
+2. Large images are automatically downsampled to 500px max dimension
+3. For very large images, try reducing the number of colors with `-n`
 
 ## License
 

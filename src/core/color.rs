@@ -4,7 +4,7 @@ use linfa::Dataset;
 use linfa::traits::{Fit, Predict};
 use linfa_clustering::KMeans;
 use ndarray::{Array2, Axis};
-use log::debug;
+use log::info;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,45 +46,61 @@ impl ColorExtractor {
             ));
         }
 
+        info!("Starting color extraction");
         let (width, height) = self.image.dimensions();
-        let total_pixels = (width * height) as f32;
+        info!("Original image size: {}x{}", width, height);
         
-        // Convert image to RGB pixels and create data points
-        let rgb_image = self.image.to_rgb8();
-        let mut pixel_data = Vec::with_capacity((width * height) as usize * 3);
+        // Downsample the image to make processing faster
+        let max_dimension = 500; // Reduced from 1000
+        let (new_width, new_height) = if width > max_dimension || height > max_dimension {
+            let ratio = max_dimension as f32 / width.max(height) as f32;
+            ((width as f32 * ratio) as u32, (height as f32 * ratio) as u32)
+        } else {
+            (width, height)
+        };
+        
+        info!("Resizing image to {}x{}", new_width, new_height);
+        let resized = self.image.resize(new_width, new_height, image::imageops::FilterType::Lanczos3);
+        let rgb_image = resized.to_rgb8();
+        let total_pixels = (new_width * new_height) as f32;
+        
+        info!("Converting image to RGB data");
+        let mut pixel_data = Vec::new();
         
         for pixel in rgb_image.pixels() {
-            pixel_data.push(pixel[0] as f32);
-            pixel_data.push(pixel[1] as f32);
-            pixel_data.push(pixel[2] as f32);
+            pixel_data.extend_from_slice(&[pixel[0] as f32, pixel[1] as f32, pixel[2] as f32]);
         }
 
+        let num_pixels = pixel_data.len() / 3;
+        info!("Created dataset with {} pixels", num_pixels);
+
+        info!("Creating observation matrix");
         let observations = Array2::from_shape_vec(
-            ((width * height) as usize, 3),
+            (num_pixels, 3),
             pixel_data,
         ).map_err(|e| PigmentsError::ImageProcessError(e.to_string()))?;
 
+        info!("Creating dataset");
         let dataset = Dataset::from(observations);
 
-        debug!("Processing {} pixels", width * height);
-
-        // Perform k-means clustering
+        info!("Starting k-means clustering with {} colors", num_colors);
         let kmeans = KMeans::params(num_colors)
-            .max_n_iterations(100)
-            .tolerance(1e-4)
+            .max_n_iterations(20)  // Reduced iterations
+            .tolerance(1e-2)      // Increased tolerance
             .fit(&dataset)
             .map_err(|e| PigmentsError::ColorExtractionError(e.to_string()))?;
 
+        info!("Clustering complete, processing results");
         let predictions = kmeans.predict(&dataset);
         let centroids = kmeans.centroids();
 
-        // Count pixels in each cluster
+        info!("Counting pixels in clusters");
         let mut cluster_counts = vec![0; num_colors];
         for &cluster in predictions.iter() {
             cluster_counts[cluster as usize] += 1;
         }
 
-        // Convert centroids to Colors
+        info!("Converting centroids to colors");
         let colors: Vec<Color> = centroids
             .axis_iter(Axis(0))
             .zip(cluster_counts.iter())
@@ -98,6 +114,7 @@ impl ColorExtractor {
             })
             .collect();
 
+        info!("Color extraction complete");
         Ok(colors)
     }
 }
